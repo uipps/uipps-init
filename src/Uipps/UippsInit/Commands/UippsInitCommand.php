@@ -14,11 +14,10 @@
 namespace Uipps\UippsInit\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Artisan;
 
 class UippsInitCommand extends Command
 {
-    const DOT_REPLACE_TO_STR = '---______---'; // 配置中不能有.点符号, 否则会被当成数组的层级，因此需要将配置中的.替换成特殊符号便于还原
-
     /*
     The name and signature of the console command.
  不要跟如下冲突：
@@ -32,19 +31,12 @@ class UippsInitCommand extends Command
 
      */
     protected $signature = 'uipps:init
-                            {--c|connection= : The name of the connection}
-                            {--d|database= : The name of the MySQL database}
                             ';
 
     protected $description = 'init uipps platform';
 
-    protected $_connection = '';    // 数据库连接的名称，连接别名
-    protected $_database = '';      // 指定的数据库名称
-
     // Execute the console command.
-    public function handle()
-    {
-
+    public function handle() {
         $this->info(date('Y-m-d H:i:s') . ' uipps init begin: ');
 
         $this->doInit();
@@ -54,17 +46,64 @@ class UippsInitCommand extends Command
     }
 
     protected function doInit() {
-        $this->_connection = $this->getConnection();
-        $this->_database = $this->getSchema();
+        //$this->_connection = $this->getConnection();
+        //$this->_database = $this->getSchema();
 
         // 复制迁移文件 到database/目录下
+        self::copyFile2Migrations();
+        self::copyFile2Seeders();
 
-        // 执行 php artisan migrate:fresh && php artisan db:seed --class=project  等命令
+        // TODO 检查当前数据库有哪些数据表存在，无数据表提示一下；
+        // TODO 检查各个存在的数据表是否有数据，输出有数据的数据表名称及记录条数
 
-        // 支持dsn形式的连接形式；
-        echo ' $connection: ' ; print_r($this->_connection); echo "\r\n";
-        echo ' $database: ' ; print_r($this->_database); echo "\r\n";
+        // 执行 php artisan migrate:fresh && php artisan db:seed --class=ProjectSeeder  等命令
+        // 清空并重新创建数据表
+        $cmd = 'migrate:fresh';
+        $exitCode = Artisan::call($cmd);
+        $output = Artisan::output();
+        echo '    CMD: php artisan '.$cmd.' ; $exitCode: ' . var_export($exitCode, true) . ' $output: ' . PHP_EOL . var_export($output, true) . "\r\n";
+
+        // 填充数据
+        $cmd = 'db:seed --class=ProjectSeeder';
+        $exitCode = Artisan::call($cmd);
+        $output = Artisan::output();
+        echo '    CMD: php artisan '.$cmd.' ; $exitCode: ' . var_export($exitCode, true) . ' $output: ' . PHP_EOL . var_export($output, true) . "\r\n";
 
         return ;
     }
+
+    protected function copyFile2Migrations() {
+        $l_migrate_path = rtrim(str_replace(['\\', '//'], '/', database_path('migrations')), ' /'); //echo $l_migrate_path . PHP_EOL;
+        $l_source = str_replace('\\', '/', dirname(__DIR__)) . '/database/migrations'; //echo $l_source . PHP_EOL;
+        // 将目录下的文件copy过去
+        self::recurse_copy($l_source, $l_migrate_path); // 如果目标文件已存在，将会被覆盖。
+        return ;
+    }
+
+    protected function copyFile2Seeders() {
+        $l_seeder_path = rtrim(str_replace(['\\', '//'], '/', database_path('seeders')), ' /'); // echo $l_seeder_path . PHP_EOL;
+        $l_source = str_replace('\\', '/', dirname(__DIR__)) . '/database/seeders'; // echo $l_source . PHP_EOL;
+        // 将目录下的文件copy过去
+        self::recurse_copy($l_source, $l_seeder_path); // 如果目标文件已存在，将会被覆盖。
+        return ;
+    }
+
+    // 递归copy, 如果目标文件已存在，将会被覆盖。
+    public function recurse_copy($source_path, $target_path) {
+        $d = dir($source_path);
+        if (!$d)
+            return ;
+        @mkdir($target_path, 0775);
+        while (false !== ($_file = $d->read())) {
+            if ('.' == $_file || '..' == $_file)
+                continue;
+            if (is_dir($source_path. '/' .$_file)) {
+                self::recurse_copy($source_path. '/' .$_file, $target_path. '/' .$_file);
+            } else {
+                copy($source_path. '/' .$_file, $target_path. '/' .$_file);
+            }
+        }
+        $d->close();
+    }
+
 }
