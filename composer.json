@@ -1,0 +1,29 @@
+{
+    "name": "uipps/uipps-init",
+    "description": "uipps platform init",
+    "keywords": ["uipps", "init"],
+    "type": "library",
+    "require": {
+        "php": "^5.1|^7.0|^8.0"
+    },
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Uipps\\UippsInit\\": "src/Uipps/UippsInit/"
+        }
+    },
+    "authors": [
+        {
+            "name": "uipps",
+            "email": "uipps_com@163.com"
+        }
+    ],
+    "minimum-stability": "dev",
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Uipps\\UippsInit\\Providers\\UippsInitServiceProvider"
+            ]
+        }
+    }
+}
