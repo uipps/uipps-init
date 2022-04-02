@@ -59,16 +59,29 @@ class UippsInitCommand extends Command
         // 执行 php artisan migrate:fresh && php artisan db:seed --class=ProjectSeeder  等命令
         // 清空并重新创建数据表
         $cmd = 'migrate:fresh';
+        self::artisanCall($cmd);
+
+        // 填充数据，有几个文件则执行几次
+        $source_path = str_replace('\\', '/', database_path('seeders'));
+        $d = dir($source_path);
+        if ($d) {
+            while (false !== ($_file = $d->read())) {
+                if ('.' == $_file || '..' == $_file || is_dir($source_path. '/' .$_file))
+                    continue;
+                $cmd = 'db:seed --class=' . str_replace('.php', '', $_file);
+                self::artisanCall($cmd);
+            }
+            $d->close();
+        }
+
+        return ;
+    }
+
+    protected function artisanCall($cmd) {
+        //$cmd = 'list';
         $exitCode = Artisan::call($cmd);
         $output = Artisan::output();
         echo '    CMD: php artisan '.$cmd.' ; $exitCode: ' . var_export($exitCode, true) . ' $output: ' . PHP_EOL . var_export($output, true) . "\r\n";
-
-        // 填充数据
-        $cmd = 'db:seed --class=ProjectSeeder';
-        $exitCode = Artisan::call($cmd);
-        $output = Artisan::output();
-        echo '    CMD: php artisan '.$cmd.' ; $exitCode: ' . var_export($exitCode, true) . ' $output: ' . PHP_EOL . var_export($output, true) . "\r\n";
-
         return ;
     }
 
