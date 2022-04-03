@@ -31,6 +31,7 @@ class UippsInitCommand extends Command
 
      */
     protected $signature = 'uipps:init
+                            {--d|delete= : Delete migrations and seeders files!}
                             ';
 
     protected $description = 'init uipps platform';
@@ -39,7 +40,12 @@ class UippsInitCommand extends Command
     public function handle() {
         $this->info(date('Y-m-d H:i:s') . ' uipps init begin: ');
 
-        $this->doInit();
+        if ($this->option('delete')) {
+            self::deleteMigrationsAndSeedersFile();
+        } else {
+            $this->doInit();
+            self::deleteMigrationsAndSeedersFile(); // 初始化完成后，就删除对应文件
+        }
 
         $this->info(date('Y-m-d H:i:s') . ' uipps init end!');
         return ;
@@ -81,7 +87,9 @@ class UippsInitCommand extends Command
         //$cmd = 'list';
         $exitCode = Artisan::call($cmd);
         $output = Artisan::output();
-        echo '    CMD: php artisan '.$cmd.' ; $exitCode: ' . var_export($exitCode, true) . ' $output: ' . PHP_EOL . var_export($output, true) . "\r\n";
+        echo '    CMD: php artisan '.$cmd. PHP_EOL .
+            '      the $exitCode: ' . var_export($exitCode, true) . PHP_EOL.
+            '      the $output: ' . PHP_EOL . var_export($output, true) . PHP_EOL;
         return ;
     }
 
@@ -117,6 +125,42 @@ class UippsInitCommand extends Command
             }
         }
         $d->close();
+    }
+
+    // 删除migrations和seeders文件
+    public function deleteMigrationsAndSeedersFile() {
+        $l_migrate_path = rtrim(str_replace(['\\', '//'], '/', database_path('migrations')), ' /'); //echo $l_migrate_path . PHP_EOL;
+        $l_source = str_replace('\\', '/', dirname(__DIR__)) . '/database/migrations'; //echo $l_source . PHP_EOL;
+        // 删除对应文件
+        self::recurse_del($l_source, $l_migrate_path);
+
+        $l_seeder_path = rtrim(str_replace(['\\', '//'], '/', database_path('seeders')), ' /'); // echo $l_seeder_path . PHP_EOL;
+        $l_source = str_replace('\\', '/', dirname(__DIR__)) . '/database/seeders'; // echo $l_source . PHP_EOL;
+        // 删除对应文件
+        self::recurse_del($l_source, $l_seeder_path);
+        return ;
+    }
+
+    // 递归del
+    public function recurse_del($source_path, $target_path) {
+        $d = dir($source_path);
+        if (!$d)
+            return ;
+        //@mkdir($target_path, 0775);
+        while (false !== ($_file = $d->read())) {
+            if ('.' == $_file || '..' == $_file)
+                continue;
+            if (is_dir($source_path. '/' .$_file)) {
+                self::recurse_del($source_path. '/' .$_file, $target_path. '/' .$_file);
+            } else {
+                if (file_exists($target_path. '/' .$_file) && !is_dir($target_path. '/' .$_file)) {
+                    if (unlink($target_path. '/' .$_file))
+                        echo '        delete file succ: ' . $target_path. '/' .$_file . PHP_EOL ;
+                }
+            }
+        }
+        $d->close();
+        return ;
     }
 
 }
